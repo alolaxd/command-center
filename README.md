@@ -54,7 +54,7 @@ Palette commands include `>new reminder Buy milk tomorrow 3pm`, `>new event`, `>
 
 Settings → AI: Anthropic (default model `claude-opus-5-5`, streamed over the Messages API with server-side refusal fallback enabled), OpenAI, OpenRouter, or a local Ollama (auto-detected). Keys are stored in the Keychain and saved as you type.
 
-## Honest limitations
+## Limitations so far
 
 - **Health**: macOS apps can't read the Health database without Apple's restricted HealthKit entitlement. The widget uses manual logging and imports Apple Health exports (`export.xml`).
 - **Screen Time**: Apple's Screen Time data isn't available to third-party apps, so usage is measured by Command Center itself while it runs.
@@ -64,6 +64,7 @@ Settings → AI: Anthropic (default model `claude-opus-5-5`, streamed over the M
 - **Encrypted database**: Touch ID app lock is implemented, but SQLCipher encryption is not.
 - **Notch "Dynamic Island" panel**: not implemented. The menu bar panel drops down from the status item.
 - **Community widget gallery**: placeholder only. Share widgets as `.ccwidget` files.
+(Please feel free to make a PR if you want your widget added into Command Center)
 
 ## Architecture
 
