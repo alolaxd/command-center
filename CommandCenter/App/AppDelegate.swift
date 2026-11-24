@@ -7,6 +7,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             _ = AppDatabase.shared
             if AppPaths.isRunningTests { return }   // tests drive services themselves
             StatusItemController.shared.install()
+            NotchController.shared.install()
             GlobalHotkeys.shared.handler = { action in
                 switch action {
                 case .toggleTerminal: StatusItemController.shared.toggle(tab: .terminal)

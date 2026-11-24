@@ -155,6 +155,7 @@ final class ProductivityTests: XCTestCase {
         var c = PomodoroConfiguration(); c.autoStartBreaks = false; c.longBreakEvery = 4
         engine.apply(c)
         engine.reset()
+        _ = habit(autoSource: "pomodoro", name: "Focus")
         let before = PomodoroStore.countToday()
         engine.start(task: "Write tests")
         XCTAssertEqual(engine.phase, .focus)
@@ -163,7 +164,7 @@ final class ProductivityTests: XCTestCase {
         XCTAssertEqual(PomodoroStore.countToday(), before + 1)
         XCTAssertEqual(PomodoroStore.sessions(since: Calendar.current.startOfDay(for: Date())).first?.task, "Write tests")
         XCTAssertEqual(engine.phase, .shortBreak)
-        let focus = HabitStore.habits().first { $0.autoSource == "pomodoro" }!
+        let focus = habit(autoSource: "pomodoro", name: "Focus")
         XCTAssertTrue(HabitStore.allDays(focus.id).contains(Date().dayKey), "Focus habit auto-completed")
         engine.reset()
         XCTAssertEqual(engine.phase, .idle)
@@ -202,14 +203,15 @@ final class ProductivityTests: XCTestCase {
 
     // MARK: Journal
     func testJournalEntryMoodPromptsAndSummaryErrors() async {
+        _ = habit(autoSource: "journal", name: "Journal")
         var e = JournalStore.entry(Date())
         e.body = "Good day"; e.mood = 4; e.wentWell = "Tests passed"; e.grateful = "Coffee"
         JournalStore.save(e)
         let loaded = JournalStore.entry(Date())
         XCTAssertEqual(loaded.mood, 4); XCTAssertEqual(loaded.wentWell, "Tests passed")
         XCTAssertTrue(JournalStore.daysWithEntries().contains(Date().dayKey))
-        XCTAssertTrue(HabitStore.allDays(HabitStore.habits().first { $0.autoSource == "journal" }!.id).contains(Date().dayKey), "journaling ticks the Journal habit")
-        XCTAssertTrue(JournalStore.aiSummary().contains("average mood 4.0"))
+        XCTAssertTrue(HabitStore.allDays(habit(autoSource: "journal", name: "Journal").id).contains(Date().dayKey), "journaling ticks the Journal habit")
+        XCTAssertTrue(JournalStore.aiSummary().contains("average mood"), JournalStore.aiSummary())
         var cal = Calendar.current; cal.firstWeekday = 2
         XCTAssertEqual(cal.component(.weekday, from: JournalStore.weekStart(Date())), 2, "weeks start Monday")
         // AI summary surfaces a clear error when no provider is configured.

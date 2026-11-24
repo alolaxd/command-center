@@ -146,7 +146,8 @@ struct PermissionPrompt: View {
 }
 
 extension Double {
-    var currency: String { formatted(.currency(code: Locale.current.currency?.identifier ?? "USD")) }
+    /// Currency from Settings → General (defaults to the system locale's currency).
+    var currency: String { formatted(.currency(code: CurrencySetting.code)) }
     var usd: String { formatted(.currency(code: "USD").precision(.fractionLength(2))) }
     var percent: String { formatted(.percent.precision(.fractionLength(0))) }
 }
@@ -209,4 +210,12 @@ struct PalettePicker: View {
             }
         }
     }
+}
+
+enum CurrencySetting {
+    static var code: String {
+        let c = UserDefaults.standard.string(forKey: SettingsKey.currency) ?? ""
+        return c.isEmpty ? (Locale.current.currency?.identifier ?? "USD") : c
+    }
+    static let common = ["USD", "EUR", "GBP", "JPY", "CAD", "AUD", "CHF", "CNY", "INR", "AED", "SGD", "BRL", "MXN", "SEK", "KRW"]
 }

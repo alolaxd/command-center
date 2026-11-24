@@ -10,7 +10,7 @@ struct SettingsView: View {
             IntegrationSettings().tabItem { Label("Integrations", systemImage: "link") }
             DataSettings().tabItem { Label("Data", systemImage: "externaldrive") }
         }
-        .frame(width: 540, height: 420)
+        .frame(width: 560, height: 560)
     }
 }
 
@@ -21,6 +21,10 @@ private struct GeneralSettings: View {
     @AppStorage(SettingsKey.rowHeight) private var rowHeight: Double = 84
     @AppStorage(SettingsKey.showSidebar) private var showSidebar = false
     @AppStorage(SettingsKey.appLock) private var appLock = false
+    @AppStorage(SettingsKey.currency) private var currency = ""
+    @AppStorage(SettingsKey.notchEnabled) private var notchOn = true
+    @AppStorage(SettingsKey.notchHover) private var notchHover = true
+    @AppStorage(SettingsKey.notchLive) private var notchLive = true
 
     var body: some View {
         Form {
@@ -31,6 +35,10 @@ private struct GeneralSettings: View {
                     HStack { Circle().fill(c.color ?? .accentColor).frame(width: 10, height: 10); Text(c.rawValue.capitalized) }.tag(c.rawValue)
                 }
             }
+            Picker("Currency", selection: $currency) {
+                Text("System (\(Locale.current.currency?.identifier ?? "USD"))").tag("")
+                ForEach(CurrencySetting.common, id: \.self) { Text($0).tag($0) }
+            }
             Picker("Text size", selection: $textScale) { ForEach(TextScale.allCases) { Text($0.rawValue).tag($0.rawValue) } }
             Slider(value: $rowHeight, in: 60...140, step: 4) { Text("Grid row height") }
             Picker("Columns (current workspace)", selection: Binding(
@@ -40,6 +48,15 @@ private struct GeneralSettings: View {
             }
             Toggle("Show widget list sidebar", isOn: $showSidebar)
             Toggle("Require Touch ID to open", isOn: $appLock)
+            Section("Notch island") {
+                Toggle("Use notch-style island for the menu bar panel", isOn: Binding(get: { notchOn }, set: { notchOn = $0; NotchController.isEnabled = $0 }))
+                Toggle("Open on hover", isOn: Binding(get: { notchHover }, set: { notchHover = $0; NotchController.hoverToOpen = $0 }))
+                    .disabled(!notchOn)
+                Toggle("Live activity (pomodoro timer, running agents)", isOn: Binding(get: { notchLive }, set: { notchLive = $0; NotchController.showLiveActivity = $0 }))
+                    .disabled(!notchOn)
+                Text("On Macs without a notch the island hangs from the top centre of the menu bar. Turn it off to use the classic drop-down under the menu bar icon.")
+                    .font(.caption).foregroundStyle(.secondary)
+            }
         }
         .formStyle(.grouped)
     }

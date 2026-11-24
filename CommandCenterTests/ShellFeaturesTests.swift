@@ -101,3 +101,62 @@ final class ShellFeaturesTests: XCTestCase {
         XCTAssertFalse(AppState.reallyQuit)
     }
 }
+
+@MainActor
+final class NotchTests: XCTestCase {
+    let screen = CGRect(x: 0, y: 0, width: 1512, height: 982)
+
+    func testHardwareNotchGeometry() {
+        // MacBook Pro 14": notch between the two auxiliary areas, 32pt tall.
+        let n = NotchController.notch(screenFrame: screen, safeTop: 32,
+                                      auxLeft: CGRect(x: 0, y: 950, width: 662, height: 32), auxRight: CGRect(x: 850, y: 950, width: 662, height: 32), menuBarHeight: 32)
+        XCTAssertTrue(n.isHardware)
+        XCTAssertEqual(n.rect, CGRect(x: 662, y: 950, width: 188, height: 32))
+        XCTAssertEqual(NotchController.frame(for: .collapsed, notch: n, screenFrame: screen), n.rect, "collapsed island hides inside the notch")
+        let live = NotchController.frame(for: .live, notch: n, screenFrame: screen)
+        XCTAssertEqual(live.width, 188 + 2 * NotchController.liveWing); XCTAssertEqual(live.midX, n.rect.midX)
+        let exp = NotchController.frame(for: .expanded, notch: n, screenFrame: screen)
+        XCTAssertEqual(exp.maxY, screen.maxY, "grows downward from the top edge")
+        XCTAssertEqual(exp.midX, n.rect.midX, accuracy: 0.5)
+        XCTAssertEqual(exp.height, NotchController.expandedSize.height + 32)
+    }
+
+    func testVirtualNotchOnScreensWithoutOne() {
+        let wide = CGRect(x: 0, y: 0, width: 1637, height: 1024)
+        let n = NotchController.notch(screenFrame: wide, safeTop: 0, auxLeft: nil, auxRight: nil, menuBarHeight: 31)
+        XCTAssertFalse(n.isHardware)
+        XCTAssertEqual(n.rect.midX, wide.midX); XCTAssertEqual(n.rect.maxY, wide.maxY); XCTAssertEqual(n.rect.height, 31)
+        // Expanded island stays fully on screen even on an off-centre secondary display.
+        let side = CGRect(x: 1637, y: 0, width: 800, height: 600)
+        let sn = NotchController.notch(screenFrame: side, safeTop: 0, auxLeft: nil, auxRight: nil, menuBarHeight: 24)
+        let exp = NotchController.frame(for: .expanded, notch: sn, screenFrame: side)
+        XCTAssertGreaterThanOrEqual(exp.minX, side.minX); XCTAssertLessThanOrEqual(exp.maxX, side.maxX)
+    }
+
+    func testIslandCanBeDisabledAndRoutesToggles() {
+        let saved = NotchController.isEnabled
+        defer { NotchController.isEnabled = saved }
+        NotchController.isEnabled = true
+        NotchController.shared.toggle(tab: .clipboard)
+        XCTAssertEqual(NotchController.shared.mode, .expanded)
+        XCTAssertEqual(StatusItemController.shared.model.tab, .clipboard)
+        NotchController.shared.toggle(tab: nil)
+        XCTAssertNotEqual(NotchController.shared.mode, .expanded, "same hotkey collapses it")
+        NotchController.isEnabled = false
+        XCTAssertEqual(NotchController.shared.mode, .hidden, "disabling removes the island entirely")
+    }
+
+    func testLiveActivityAppearsWithRunningPomodoro() {
+        let saved = NotchController.isEnabled
+        defer { NotchController.isEnabled = saved; PomodoroEngine.shared.reset() }
+        NotchController.isEnabled = true
+        NotchController.showLiveActivity = true
+        PomodoroEngine.shared.start(task: "Island")
+        NotchController.shared.refreshActivity()
+        XCTAssertTrue(NotchController.shared.state.pomodoroRunning)
+        XCTAssertEqual(NotchController.shared.mode, .live)
+        PomodoroEngine.shared.reset()
+        NotchController.shared.refreshActivity()
+        if AgentActivity.runningCount() == 0 { XCTAssertEqual(NotchController.shared.mode, .collapsed) }
+    }
+}

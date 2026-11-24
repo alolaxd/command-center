@@ -71,6 +71,11 @@ final class StatusItemController: NSObject, NSWindowDelegate {
     }
 
     func toggle(tab: MenuBarModel.Tab?, prefill: String? = nil) {
+        if NotchController.isEnabled {
+            closeDropdown()
+            NotchController.shared.toggle(tab: tab, prefill: prefill)
+            return
+        }
         if isShown && (tab == nil || tab == model.tab) && prefill == nil {
             close()
             return
@@ -92,7 +97,13 @@ final class StatusItemController: NSObject, NSWindowDelegate {
         model.focusToken += 1
     }
 
+    /// Closes whichever panel is open (island or dropdown).
     func close() {
+        NotchController.shared.collapse()
+        closeDropdown()
+    }
+
+    private func closeDropdown() {
         guard panel?.isVisible == true else { return }
         panel.orderOut(nil)
         item.button?.highlight(false)

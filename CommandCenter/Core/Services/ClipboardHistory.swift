@@ -31,7 +31,8 @@ final class ClipboardHistory {
         if pb.types?.contains(NSPasteboard.PasteboardType("org.nspasteboard.ConcealedType")) == true { return }
         guard let text = pb.string(forType: .string), !text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else { return }
         entries.removeAll { $0.text == text }
-        entries.insert(Entry(text: text, date: Date(), sourceApp: NSWorkspace.shared.frontmostApplication?.localizedName), at: 0)
+        let source = AppPaths.demoMode ? ["Safari", "Terminal", "Mail", "Xcode", "Notes"][entries.count % 5] : NSWorkspace.shared.frontmostApplication?.localizedName
+        entries.insert(Entry(text: text, date: Date(), sourceApp: source), at: 0)
         if entries.count > capacity { entries.removeLast(entries.count - capacity) }
     }
 

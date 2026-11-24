@@ -3,8 +3,30 @@
 A native macOS (SwiftUI, macOS 14+) productivity dashboard that lives both as a full window of draggable, resizable widgets and as a menu bar utility with a real terminal, command palette, clipboard history, quick capture and AI.
 
 - **31 widget modules** on a snapping grid, organised into workspaces (Home, Dev, Finance, Health by default).
-- **Menu bar panel** (⌘⇧Space) that never brings the dashboard window forward. ⌘Q closes the dashboard but keeps the menu bar icon running.
+- **Notch island**: a Dynamic Island–style panel that grows out of the MacBook notch (or the top centre of the menu bar on other Macs), with a live activity for the pomodoro timer and running AI agents. It can be switched off for a classic menu bar dropdown.
+- **Menu bar terminal** (⌘⇧Space), command palette, clipboard history, quick capture and Ask AI. Opening it never brings the dashboard window forward; ⌘Q closes the dashboard but keeps the app in the menu bar.
 - **Local-first**: SQLite (GRDB) + Markdown files in `~/Library/Application Support/CommandCenter/`. Secrets live in the Keychain. No telemetry.
+
+![Home workspace](docs/screenshots/dashboard-home.png)
+
+<table>
+<tr><td><img src="docs/screenshots/dashboard-dev.png" alt="Dev workspace: AI agent monitor, system monitor, terminal, snippets"></td>
+<td><img src="docs/screenshots/dashboard-finance.png" alt="Finance workspace: stocks, budget, news, launcher, bookmarks"></td></tr>
+<tr><td><img src="docs/screenshots/dashboard-health.png" alt="Health workspace in light mode"></td>
+<td><img src="docs/screenshots/notch-expanded.png" alt="Notch island expanded with the terminal"></td></tr>
+<tr><td><img src="docs/screenshots/notch-live.png" alt="Notch live activity: pomodoro timer and running agents"></td>
+<td><img src="docs/screenshots/menubar-clipboard.png" alt="Clipboard history"></td></tr>
+<tr><td><img src="docs/screenshots/ask-ai.png" alt="Ask AI about your own data"></td>
+<td><img src="docs/screenshots/widget-gallery.png" alt="Widget gallery"></td></tr>
+</table>
+
+<sub>Screenshots are generated from sample data (`Scripts/screenshots.sh`).</sub>
+
+## Install
+
+Download `CommandCenter-<version>.dmg` (or the `.zip`) from [Releases](../../releases) and drag **Command Center** to Applications.
+
+The app isn't notarized, so the first launch is blocked by Gatekeeper: right-click the app → **Open** → **Open**, or run `xattr -dr com.apple.quarantine "/Applications/Command Center.app"`. macOS will then ask for permissions (Reminders, Calendar, Automation, Microphone) the first time a widget needs them.
 
 ## Build & run
 
@@ -14,6 +36,7 @@ Requirements: Xcode 16+ (tested with Xcode 27), [XcodeGen](https://github.com/yo
 ./build.sh            # generates the Xcode project and builds Debug
 open "build/DD/Build/Products/Debug/Command Center.app"
 ./build.sh test       # full test suite (runs inside the app, isolated data dir)
+Scripts/release.sh    # Release build → build/dist/*.zip and *.dmg (ad-hoc signed)
 ```
 
 `build.sh` signs with your local "Apple Development" certificate when one exists (via a git-ignored `Local.xcconfig`), so Keychain items stay readable across rebuilds. Without one it falls back to ad-hoc signing.
@@ -38,7 +61,9 @@ open "build/DD/Build/Products/Debug/Command Center.app"
 - Optional widget-list sidebar (⌃⌘S), themes, accent colour, text size and Touch ID app lock in Settings.
 - Export and import layouts as JSON (Settings → Data).
 
-## Menu bar
+## Menu bar & notch island
+
+By default the menu bar panel opens as an **island** from the notch: hover the notch (or press ⌘⇧Space) to expand it, and move away or press Esc to collapse it. While a pomodoro runs or AI agents are working, the collapsed island widens into a live activity showing the timer and the agent count. On Macs without a notch it hangs from the top centre of the menu bar. Settings → General → Notch island lets you turn it off (classic dropdown under the menu bar icon) or disable hover-to-open and the live activity.
 
 | Shortcut | Action |
 |---|---|
@@ -62,7 +87,6 @@ Settings → AI: Anthropic (default model `claude-opus-5-5`, streamed over the M
 - **Calendar travel time**: EventKit doesn't expose it, so locations are shown instead.
 - **Cursor / Windsurf**: detected as running processes; their token usage isn't readable.
 - **Encrypted database**: Touch ID app lock is implemented, but SQLCipher encryption is not.
-- **Notch "Dynamic Island" panel**: not implemented. The menu bar panel drops down from the status item.
 - **Community widget gallery**: placeholder only. Share widgets as `.ccwidget` files.
 (Please feel free to make a PR if you want your widget added into Command Center)
 
@@ -74,9 +98,10 @@ CommandCenter/
   Core/         grid engine + drag sessions, DashboardWidget protocol, registry, WidgetBus,
                 coalesced TickScheduler, GRDB database, Keychain, AI service, terminal sessions
   Dashboard/    grid view, widget card chrome, toolbar/workspaces, settings, onboarding
-  MenuBar/      non-activating panel, quick terminal, clipboard ring, capture, palette
+  MenuBar/      notch island, non-activating dropdown panel, quick terminal, clipboard ring, capture, palette
   Widgets/<Name>/  <Name>Widget.swift · <Name>ViewModel.swift · <Name>Configuration.swift · <Name>Store.swift
-CommandCenterTests/  74 tests: grid + real-mouse drag tests, every widget's logic, rendering smoke tests
+CommandCenterTests/  87 tests: grid + real-mouse drag tests, every widget's logic, rendering/pixel tests, notch geometry
+Scripts/        release.sh (zip + DMG), screenshots.sh (sample-data screenshots), make-icon.swift
 ```
 
 Each widget conforms to `DashboardWidget`, declaring its min/default size, refresh interval and a `WidgetConfiguration` whose editor doubles as its settings schema. Widgets talk to each other through `WidgetBus` (for example, a finished pomodoro ticks the Focus habit). Polling widgets share one coalesced timer that only runs while subscribers are visible.

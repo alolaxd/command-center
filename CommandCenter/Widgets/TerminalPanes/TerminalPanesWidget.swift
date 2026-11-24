@@ -12,7 +12,12 @@ struct TerminalPanesWidget: DashboardWidget {
     let context: WidgetContext<TerminalPanesConfiguration>
     @State private var vm = TerminalPanesViewModel()
 
-    init(context: WidgetContext<TerminalPanesConfiguration>) { self.context = context }
+    init(context: WidgetContext<TerminalPanesConfiguration>) {
+        self.context = context
+        let vm = TerminalPanesViewModel()
+        vm.instanceID = context.instanceID
+        _vm = State(initialValue: vm)
+    }
 
     private var config: TerminalPanesConfiguration { context.config }
 
@@ -47,7 +52,7 @@ struct TerminalPanesWidget: DashboardWidget {
                     ForEach(Array(config.tabs.enumerated()), id: \.element.id) { i, tab in
                         let selected = tab.id == vm.selectedTab(config)?.id
                         HStack(spacing: 4) {
-                            Text(tab.title.isEmpty ? TerminalPanesStore.session(for: tab.panes[0]).title : tab.title)
+                            Text(tab.title.isEmpty ? TerminalPanesStore.session(for: tab.panes[0], instance: context.instanceID).title : tab.title)
                                 .font(.caption).lineLimit(1).frame(maxWidth: 140)
                             Button { vm.closeTab(tab, config, update: context.updateConfig) } label: { Image(systemName: "xmark").font(.system(size: 8, weight: .bold)) }
                                 .buttonStyle(.plain).foregroundStyle(.secondary).accessibilityLabel("Close tab")
@@ -86,7 +91,7 @@ struct TerminalPanesWidget: DashboardWidget {
     }
 
     private func pane(_ p: TerminalPane) -> some View {
-        TerminalHostView(session: TerminalPanesStore.session(for: p))
+        TerminalHostView(session: TerminalPanesStore.session(for: p, instance: context.instanceID))
             .clipShape(RoundedRectangle(cornerRadius: 6))
             .overlay(RoundedRectangle(cornerRadius: 6).strokeBorder(vm.focusedPane == p.id ? Color.accentColor.opacity(0.5) : .clear))
             .simultaneousGesture(TapGesture().onEnded { vm.focusedPane = p.id })

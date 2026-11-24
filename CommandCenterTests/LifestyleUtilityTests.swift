@@ -41,6 +41,7 @@ final class LifestyleUtilityTests: XCTestCase {
 
     // MARK: Health
     func testHealthManualLogAndExportImport() async throws {
+        _ = habit(autoSource: "health.workout", name: "Exercise")
         HealthStore.add(.water, 250); HealthStore.add(.water, 250)
         let vm = HealthViewModel(); vm.load()
         XCTAssertGreaterThanOrEqual(vm.today[.water] ?? 0, 500)
@@ -65,7 +66,7 @@ final class LifestyleUtilityTests: XCTestCase {
         XCTAssertGreaterThanOrEqual(vm.today[.steps] ?? 0, 9000)
         XCTAssertEqual(vm.today[.heartRate] ?? 0, 70, accuracy: 0.1, "heart rate averaged")
         XCTAssertEqual(vm.today[.sleepHours] ?? 0, 0.5, accuracy: 0.01)
-        let exercise = HabitStore.habits().first { $0.autoSource == "health.workout" }!
+        let exercise = habit(autoSource: "health.workout", name: "Exercise")
         XCTAssertTrue(HabitStore.allDays(exercise.id).contains(Date().dayKey), "workout auto-completes Exercise habit")
     }
 

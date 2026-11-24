@@ -24,6 +24,7 @@ actor AgentScanner {
     private static let isoPlain = ISO8601DateFormatter()
 
     func scanAll(aiderRepos: [String]) {
+        if AppPaths.demoMode { return }
         scanClaude()
         scanCodex()
         scanOpenCode()
@@ -322,6 +323,7 @@ actor AgentScanner {
     // MARK: Processes
 
     func agentProcesses() -> [AgentProcess] {
+        if AppPaths.demoMode { return [] }
         let count = proc_listallpids(nil, 0)
         guard count > 0 else { return [] }
         var pids = [pid_t](repeating: 0, count: Int(count) + 32)
@@ -401,6 +403,8 @@ enum AgentActivity {
     private(set) static var lastScan: Date?
     private static var inFlight = false
     static func runningCount() -> Int { running }
+    /// Demo/screenshot mode: treat sample data as already scanned.
+    static func markDemoScan() { lastScan = Date(); processes = []; running = 2 }
 
     static func start() {
         _ = TickScheduler.shared.subscribe(every: 15) { Task { await refresh() } }

@@ -41,6 +41,10 @@ enum SettingsKey {
     static func aiModel(_ p: AIProvider) -> String { "ai.model.\(p.rawValue)" }
     static let ollamaURL = "ai.ollamaURL"
     static let publicIPLookup = "net.publicIP"
+    static let currency = "ui.currency"
+    static let notchEnabled = "notch.enabled"
+    static let notchHover = "notch.hoverToOpen"
+    static let notchLive = "notch.liveActivity"
 }
 
 enum TextScale: String, CaseIterable, Identifiable {

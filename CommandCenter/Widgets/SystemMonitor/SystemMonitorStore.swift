@@ -189,6 +189,12 @@ actor SystemSampler {
 
     // MARK: Processes (libproc)
     private func processes() -> [ProcessSample] {
+        if AppPaths.demoMode {
+            return [("Xcode", 18.4, 2_100), ("Safari", 9.2, 1_250), ("Command Center", 3.1, 180), ("WindowServer", 6.7, 420),
+                    ("Music", 1.2, 260), ("Notes", 0.4, 140)].enumerated().map {
+                ProcessSample(pid: pid_t(1000 + $0.offset), name: $0.element.0, cpu: $0.element.1, memory: UInt64($0.element.2) << 20)
+            }
+        }
         let count = proc_listallpids(nil, 0)
         guard count > 0 else { return [] }
         var pids = [pid_t](repeating: 0, count: Int(count) + 32)
@@ -218,7 +224,15 @@ actor SystemSampler {
 
     static func processName(_ pid: pid_t) -> String {
         var buf = [CChar](repeating: 0, count: 1024)
-        if proc_name(pid, &buf, UInt32(buf.count)) > 0 { return String(cString: buf) }
+        if proc_name(pid, &buf, UInt32(buf.count)) > 0 {
+            let name = String(cString: buf)
+            // Version-named binaries (e.g. ~/.local/share/claude/versions/2.1.330) → use the tool's folder name.
+            if name.first?.isNumber == true, name.allSatisfy({ $0.isNumber || $0 == "." }), let path = processPath(pid) {
+                let parts = path.split(separator: "/")
+                if let i = parts.lastIndex(of: "versions"), i > 0 { return String(parts[i - 1]) }
+            }
+            return name
+        }
         var path = [CChar](repeating: 0, count: Int(MAXPATHLEN))
         if proc_pidpath(pid, &path, UInt32(path.count)) > 0 { return (String(cString: path) as NSString).lastPathComponent }
         return "pid \(pid)"

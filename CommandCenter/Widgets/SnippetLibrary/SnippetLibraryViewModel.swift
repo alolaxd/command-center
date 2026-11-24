@@ -16,7 +16,10 @@ final class SnippetLibraryViewModel {
 
     var languages: [String] { Array(Set(snippets.map(\.language))).sorted() }
 
-    func load() { snippets = SnippetStore.all() }
+    func load() {
+        snippets = SnippetStore.all()
+        if selected == nil || !snippets.contains(where: { $0.id == selected?.id }) { selected = snippets.first }
+    }
 
     func copy(_ s: Snippet) {
         NSPasteboard.general.clearContents()

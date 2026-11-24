@@ -17,20 +17,31 @@ final class TerminalSession: NSObject, Identifiable, LocalProcessTerminalViewDel
         super.init()
         view.cwdProvider = { [weak self] in self?.cwd }
         view.font = NSFont.monospacedSystemFont(ofSize: fontSize, weight: .regular)
-        view.nativeBackgroundColor = NSColor(name: nil) { $0.bestMatch(from: [.darkAqua, .aqua]) == .darkAqua
-            ? NSColor(white: 0.08, alpha: 1) : NSColor(white: 0.98, alpha: 1) }
-        view.nativeForegroundColor = NSColor.textColor
+        // Fixed terminal palette: readable in both light and dark mode, and immune to appearance changes
+        // (SwiftTerm resolves colours once, so dynamic system colours could end up white-on-white).
+        view.nativeBackgroundColor = NSColor(srgbRed: 0.075, green: 0.08, blue: 0.09, alpha: 1)
+        view.nativeForegroundColor = NSColor(srgbRed: 0.88, green: 0.89, blue: 0.9, alpha: 1)
+        view.caretColor = NSColor(srgbRed: 0.88, green: 0.89, blue: 0.9, alpha: 0.8)
         view.processDelegate = self
         view.linkReporting = .implicit
         start(cwd: cwd)
     }
 
     func start(cwd: String? = nil) {
-        let shell = Shell.userShell
+        var shell = Shell.userShell
         var env = Terminal.getEnvironmentVariables(termName: "xterm-256color")
         env.append("COLORTERM=truecolor")
         env.append("TERM_PROGRAM=CommandCenter")
-        let dir = cwd ?? FileManager.default.homeDirectoryForCurrentUser.path
+        var dir = cwd ?? FileManager.default.homeDirectoryForCurrentUser.path
+        if AppPaths.demoMode {
+            // Neutral prompt, no personal shell config or history.
+            let demo = FileManager.default.temporaryDirectory.appendingPathComponent("cc-demo-shell")
+            try? FileManager.default.createDirectory(at: demo.appendingPathComponent("acme-api/src"), withIntermediateDirectories: true)
+            try? "PROMPT='%F{green}➜%f %F{cyan}%1~%f '\nunsetopt PROMPT_SP\nHISTFILE=/dev/null\n".write(to: demo.appendingPathComponent(".zshrc"), atomically: true, encoding: .utf8)
+            env.append("ZDOTDIR=\(demo.path)")
+            shell = "/bin/zsh"
+            dir = demo.appendingPathComponent("acme-api").path
+        }
         self.cwd = dir
         title = (shell as NSString).lastPathComponent
         view.startProcess(executable: shell, args: ["-l"], environment: env,
@@ -104,36 +115,57 @@ final class TerminalManager {
     }
 }
 
-/// Hosts a session's NSView inside SwiftUI, reparenting it when the hosting view changes.
+/// Hosts a session's NSView inside SwiftUI. A session has exactly one NSView, so when several
+/// hosts exist (e.g. the hidden drop-down panel and the visible notch island) only a host in a
+/// visible window may claim it; hosts re-claim when their window becomes key or visible again.
 struct TerminalHostView: NSViewRepresentable {
     let session: TerminalSession
     var focusOnAppear = false
 
-    func makeNSView(context: Context) -> NSView {
-        let container = NSView()
-        attach(to: container)
-        return container
+    func makeNSView(context: Context) -> TerminalContainerView {
+        let c = TerminalContainerView()
+        c.session = session
+        c.focusOnAppear = focusOnAppear
+        return c
     }
 
-    func updateNSView(_ container: NSView, context: Context) {
-        if session.view.superview !== container { attach(to: container) }
+    func updateNSView(_ container: TerminalContainerView, context: Context) {
+        container.session = session
+        container.claimIfVisible()
+    }
+}
+
+final class TerminalContainerView: NSView {
+    var session: TerminalSession?
+    var focusOnAppear = false
+    private var observers: [NSObjectProtocol] = []
+
+    override func viewDidMoveToWindow() {
+        super.viewDidMoveToWindow()
+        observers.forEach(NotificationCenter.default.removeObserver)
+        observers = []
+        guard let window else { return }
+        for name in [NSWindow.didBecomeKeyNotification, NSWindow.didChangeOcclusionStateNotification, NSWindow.didUpdateNotification] {
+            observers.append(NotificationCenter.default.addObserver(forName: name, object: window, queue: .main) { [weak self] _ in
+                MainActor.assumeIsolated { self?.claimIfVisible() }
+            })
+        }
+        claimIfVisible()
     }
 
-    private func attach(to container: NSView) {
-        container.subviews.forEach { $0.removeFromSuperview() }
+    deinit { observers.forEach(NotificationCenter.default.removeObserver) }
+
+    @MainActor func claimIfVisible() {
+        guard let session, let window, window.isVisible, session.view.superview !== self else { return }
         let v = session.view
         v.removeFromSuperview()
         v.translatesAutoresizingMaskIntoConstraints = false
-        container.addSubview(v)
+        addSubview(v)
         NSLayoutConstraint.activate([
-            v.leadingAnchor.constraint(equalTo: container.leadingAnchor),
-            v.trailingAnchor.constraint(equalTo: container.trailingAnchor),
-            v.topAnchor.constraint(equalTo: container.topAnchor),
-            v.bottomAnchor.constraint(equalTo: container.bottomAnchor),
+            v.leadingAnchor.constraint(equalTo: leadingAnchor), v.trailingAnchor.constraint(equalTo: trailingAnchor),
+            v.topAnchor.constraint(equalTo: topAnchor), v.bottomAnchor.constraint(equalTo: bottomAnchor),
         ])
-        if focusOnAppear {
-            DispatchQueue.main.async { v.window?.makeFirstResponder(v) }
-        }
+        if focusOnAppear { DispatchQueue.main.async { v.window?.makeFirstResponder(v) } }
     }
 }
 

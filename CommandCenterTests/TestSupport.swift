@@ -63,3 +63,12 @@ func tempDir() -> URL {
     try? FileManager.default.createDirectory(at: u, withIntermediateDirectories: true)
     return u
 }
+
+/// Returns the habit with this auto-source, creating it if another test removed it.
+@MainActor
+func habit(autoSource: String, name: String) -> Habit {
+    if let h = HabitStore.habits().first(where: { $0.autoSource == autoSource }) { return h }
+    let h = Habit(name: name, autoSource: autoSource)
+    HabitStore.save(h)
+    return h
+}

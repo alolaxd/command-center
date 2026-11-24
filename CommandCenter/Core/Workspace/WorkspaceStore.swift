@@ -113,7 +113,7 @@ final class WorkspaceStore: MigrationProvider {
         // Shut down terminals owned by this workspace's terminal widgets.
         for inst in workspaces[idx].widgets where inst.kind == TerminalPanesWidget.kind {
             let cfg = TerminalPanesWidget.decodeConfig(inst.config)
-            cfg.tabs.flatMap(\.panes).forEach { TerminalManager.shared.close($0.id) }
+            cfg.tabs.flatMap(\.panes).forEach { TerminalPanesStore.close($0, instance: inst.id) }
         }
         workspaces.remove(at: idx)
         if selectedID == id {

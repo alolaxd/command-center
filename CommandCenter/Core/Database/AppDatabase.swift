@@ -45,6 +45,9 @@ final class AppDatabase {
 
 enum AppPaths {
     static var isRunningTests: Bool { ProcessInfo.processInfo.environment["XCTestConfigurationFilePath"] != nil }
+    /// Demo mode (CC_DEMO=1 or set by the screenshot generator): never reads the user's agent logs,
+    /// processes or shell config, so captures contain only sample data.
+    nonisolated(unsafe) static var demoMode = ProcessInfo.processInfo.environment["CC_DEMO"] != nil
 
     /// Tests (and power users) can redirect storage with CC_DATA_DIR.
     static let root: URL = {

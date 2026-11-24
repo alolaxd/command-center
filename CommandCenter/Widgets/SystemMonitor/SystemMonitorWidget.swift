@@ -29,7 +29,7 @@ struct SystemMonitorWidget: DashboardWidget {
                                 .frame(height: max(1, 34 * load))
                         }
                         .frame(maxWidth: .infinity)
-                        .background(RoundedRectangle(cornerRadius: 1.5).fill(.quaternary))
+                        .background(RoundedRectangle(cornerRadius: 1.5).fill(Color.primary.opacity(0.07)))
                         .accessibilityLabel("Core \(i + 1)").accessibilityValue("\(Int(load * 100)) percent")
                     }
                 }

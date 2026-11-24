@@ -119,7 +119,8 @@ final class DevToolsTests: XCTestCase {
         let marker = "cc-\(Int.random(in: 1000...9999))"
         s.runLine("printf '\\033[31m%s\\033[0m\\n' \(marker); echo $TERM; tty")
         // The marker appears once in the echoed command line and once as printf output.
-        XCTAssertTrue(waitUntil(8) { s.view.transcriptText.components(separatedBy: marker).count >= 3 }, "command output arrives through the PTY")
+        XCTAssertTrue(waitUntil(8) { s.view.transcriptText.components(separatedBy: marker).count >= 3 && s.view.transcriptText.contains("/dev/ttys") },
+                      "command output arrives through the PTY")
         let out = s.view.transcriptText
         let ansi = s.view.ansiTranscript
         XCTAssertTrue(ansi.contains(marker) && (ansi.contains("[31m") || ansi.contains(";31m") || ansi.contains("38;5;1m")), "ANSI red is parsed into cell attributes")
@@ -142,12 +143,14 @@ final class DevToolsTests: XCTestCase {
         XCTAssertEqual(vm.selectedTab(config)?.panes.count, 2)
         XCTAssertEqual(vm.selectedTab(config)?.split, .horizontal)
         let pane = vm.selectedTab(config)!.panes[1]
-        XCTAssertTrue(TerminalPanesStore.session(for: pane) === TerminalPanesStore.session(for: pane), "sessions persist per pane")
+        XCTAssertTrue(TerminalPanesStore.session(for: pane, instance: vm.instanceID) === TerminalPanesStore.session(for: pane, instance: vm.instanceID), "sessions persist per pane")
+        XCTAssertFalse(TerminalPanesStore.session(for: pane, instance: vm.instanceID) === TerminalPanesStore.session(for: pane, instance: UUID()),
+                       "two widgets built from the same default config get separate shells")
         vm.split(.none, config, update: update)
         XCTAssertEqual(vm.selectedTab(config)?.panes.count, 1)
         vm.closeTab(vm.selectedTab(config)!, config, update: update)
         XCTAssertEqual(config.tabs.count, 1)
-        config.tabs.flatMap(\.panes).forEach(TerminalPanesStore.close)
+        config.tabs.flatMap(\.panes).forEach { TerminalPanesStore.close($0, instance: vm.instanceID) }
     }
 
     // MARK: Snippets
